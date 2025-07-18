@@ -86,8 +86,8 @@ public class MarkdownTextStorage: NSTextStorage {
             let boldFont = UIFont.boldSystemFont(ofSize: defaultFont.pointSize)
             addAttribute(.font, value: boldFont, range: contentRange)
             
-            // Only hide symbols if cursor is NOT in this paragraph
-            if !isTokenInCurrentParagraph(token) {
+            // Only hide symbols if cursor is NOT in this line
+            if !isTokenInCurrentLine(token) {
                 let startSyntaxRange = NSRange(location: range.location, length: 2)
                 let endSyntaxRange = NSRange(location: range.location + range.length - 2, length: 2)
                 
@@ -112,8 +112,8 @@ public class MarkdownTextStorage: NSTextStorage {
             let italicFont = UIFont.italicSystemFont(ofSize: defaultFont.pointSize)
             addAttribute(.font, value: italicFont, range: contentRange)
             
-            // Only hide symbols if cursor is NOT in this paragraph
-            if !isTokenInCurrentParagraph(token) {
+            // Only hide symbols if cursor is NOT in this line
+            if !isTokenInCurrentLine(token) {
                 let startSyntaxRange = NSRange(location: range.location, length: 1)
                 let endSyntaxRange = NSRange(location: range.location + range.length - 1, length: 1)
                 
@@ -142,8 +142,8 @@ public class MarkdownTextStorage: NSTextStorage {
             addAttribute(.font, value: headerFont, range: contentRange)
             addAttribute(.foregroundColor, value: defaultTextColor, range: contentRange)
             
-            // Only hide symbols if cursor is NOT in this paragraph
-            if !isTokenInCurrentParagraph(token) {
+            // Only hide symbols if cursor is NOT in this line
+            if !isTokenInCurrentLine(token) {
                 let syntaxRange = NSRange(location: range.location, length: hashCount + 1) // +1 for space
                 hideTextRange(syntaxRange)
             }
@@ -199,21 +199,23 @@ public class MarkdownTextStorage: NSTextStorage {
         }
     }
     
-    private func isTokenInCurrentParagraph(_ token: MarkdownToken) -> Bool {
+    private func isTokenInCurrentLine(_ token: MarkdownToken) -> Bool {
         // Bounds check the cursor position
         guard length > 0 else { return false }
         let safeCursorPosition = max(0, min(currentCursorPosition, length - 1))
-        let currentParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeCursorPosition, length: 0))
+        
+        // Get the line range for the current cursor position
+        let currentLineRange = (string as NSString).lineRange(for: NSRange(location: safeCursorPosition, length: 0))
         
         // Debug logging
         #if DEBUG
         print("DEBUG: Cursor at \(currentCursorPosition), safe: \(safeCursorPosition)")
-        print("DEBUG: Current paragraph: \(currentParagraphRange)")
+        print("DEBUG: Current line: \(currentLineRange)")
         print("DEBUG: Token range: \(token.range)")
-        print("DEBUG: Token in current paragraph: \(NSIntersectionRange(token.range, currentParagraphRange).length > 0)")
+        print("DEBUG: Token in current line: \(NSIntersectionRange(token.range, currentLineRange).length > 0)")
         #endif
         
-        return NSIntersectionRange(token.range, currentParagraphRange).length > 0
+        return NSIntersectionRange(token.range, currentLineRange).length > 0
     }
     
     private func hideTextRange(_ range: NSRange) {
