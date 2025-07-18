@@ -166,7 +166,205 @@ extension MarkdownTextView: UITextViewDelegate {
     }
     
     public func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        // Handle markdown auto-completion and deletion
+        if handleMarkdownAutoCompletion(range: range, replacementText: text) {
+            return false // We handled it, don't let the text view process it
+        }
+        
         return delegate?.markdownTextView(self, shouldChangeTextIn: range, replacementText: text) ?? true
+    }
+    
+    private func handleMarkdownAutoCompletion(range: NSRange, replacementText text: String) -> Bool {
+        // Handle deletion
+        if text.isEmpty && range.length == 1 {
+            return handleMarkdownDeletion(at: range)
+        }
+        
+        // Handle insertion
+        if text == "*" {
+            return handleAsteriskInsertion(at: range)
+        }
+        
+        if text == "#" {
+            return handleHashInsertion(at: range)
+        }
+        
+        return false
+    }
+    
+    private func handleAsteriskInsertion(at range: NSRange) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        let insertionPoint = range.location
+        
+        // Check if we're typing a second asterisk (for bold)
+        if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 42 { // ASCII for *
+            // Insert closing ** and position cursor between them
+            let boldText = "*"
+            markdownTextStorage.replaceCharacters(in: range, with: boldText)
+            
+            // Add closing ** 
+            let closingRange = NSRange(location: insertionPoint + 1, length: 0)
+            markdownTextStorage.replaceCharacters(in: closingRange, with: "**")
+            
+            // Position cursor between the ** pairs
+            let newPosition = insertionPoint + 1
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
+        // Check if there's selected text to wrap
+        if range.length > 0 {
+            let selectedText = currentText.substring(with: range)
+            let wrappedText = "*\(selectedText)*"
+            markdownTextStorage.replaceCharacters(in: range, with: wrappedText)
+            
+            // Position cursor after the wrapped text
+            let newPosition = range.location + wrappedText.count
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
+        // Insert single * and add closing *
+        let asteriskPair = "**"
+        markdownTextStorage.replaceCharacters(in: range, with: asteriskPair)
+        
+        // Position cursor between the asterisks
+        let newPosition = insertionPoint + 1
+        textView.selectedRange = NSRange(location: newPosition, length: 0)
+        return true
+    }
+    
+    private func handleHashInsertion(at range: NSRange) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        let insertionPoint = range.location
+        
+        // Only auto-complete if we're at the beginning of a line
+        if insertionPoint == 0 || currentText.character(at: insertionPoint - 1) == 10 { // newline
+            // Check if there's selected text to wrap
+            if range.length > 0 {
+                let selectedText = currentText.substring(with: range)
+                let headerText = "# \(selectedText)"
+                markdownTextStorage.replaceCharacters(in: range, with: headerText)
+                
+                // Position cursor after the header
+                let newPosition = range.location + headerText.count
+                textView.selectedRange = NSRange(location: newPosition, length: 0)
+                return true
+            }
+            
+            // Just add space after #
+            let headerText = "# "
+            markdownTextStorage.replaceCharacters(in: range, with: headerText)
+            
+            // Position cursor after the space
+            let newPosition = insertionPoint + 2
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
+        return false
+    }
+    
+    private func handleMarkdownDeletion(at range: NSRange) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        let deletionPoint = range.location
+        
+        guard deletionPoint < currentText.length else { return false }
+        
+        let charToDelete = currentText.character(at: deletionPoint)
+        
+        // Handle asterisk deletion
+        if charToDelete == 42 { // ASCII for *
+            return handleAsteriskDeletion(at: deletionPoint)
+        }
+        
+        // Handle hash deletion  
+        if charToDelete == 35 { // ASCII for #
+            return handleHashDeletion(at: deletionPoint)
+        }
+        
+        return false
+    }
+    
+    private func handleAsteriskDeletion(at position: Int) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        
+        // Check for ** pair deletion
+        if position > 0 && 
+           position < currentText.length - 1 &&
+           currentText.character(at: position - 1) == 42 && // Previous is *
+           currentText.character(at: position + 1) == 42 {   // Next is *
+            
+            // Delete both asterisks
+            let rangeToDelete = NSRange(location: position - 1, length: 3) // Delete *_* (including current char)
+            markdownTextStorage.replaceCharacters(in: rangeToDelete, with: "")
+            
+            // Position cursor where the asterisks were
+            textView.selectedRange = NSRange(location: position - 1, length: 0)
+            return true
+        }
+        
+        // Check for single * pair deletion
+        if let matchingAsterisk = findMatchingAsterisk(for: position, in: currentText) {
+            // Delete both asterisks
+            let firstRange = NSRange(location: min(position, matchingAsterisk), length: 1)
+            let secondRange = NSRange(location: max(position, matchingAsterisk), length: 1)
+            
+            // Delete the later one first to preserve indices
+            markdownTextStorage.replaceCharacters(in: secondRange, with: "")
+            markdownTextStorage.replaceCharacters(in: firstRange, with: "")
+            
+            // Position cursor at the first deletion point
+            textView.selectedRange = NSRange(location: firstRange.location, length: 0)
+            return true
+        }
+        
+        return false
+    }
+    
+    private func handleHashDeletion(at position: Int) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        
+        // Check if this is a header pattern (# at start of line followed by space)
+        let isStartOfLine = position == 0 || currentText.character(at: position - 1) == 10
+        let hasSpaceAfter = position < currentText.length - 1 && currentText.character(at: position + 1) == 32
+        
+        if isStartOfLine && hasSpaceAfter {
+            // Delete # and the space after it
+            let rangeToDelete = NSRange(location: position, length: 2)
+            markdownTextStorage.replaceCharacters(in: rangeToDelete, with: "")
+            
+            // Position cursor where the # was
+            textView.selectedRange = NSRange(location: position, length: 0)
+            return true
+        }
+        
+        return false
+    }
+    
+    private func findMatchingAsterisk(for position: Int, in text: NSString) -> Int? {
+        // Simple matching logic - find the nearest unpaired asterisk
+        // This is a simplified version; a full implementation would need proper parsing
+        
+        let searchRange = 50 // Search within 50 characters
+        let startSearch = max(0, position - searchRange)
+        let endSearch = min(text.length, position + searchRange)
+        
+        // Look backwards first
+        for i in stride(from: position - 1, through: startSearch, by: -1) {
+            if text.character(at: i) == 42 {
+                return i
+            }
+        }
+        
+        // Look forwards
+        for i in (position + 1)..<endSearch {
+            if text.character(at: i) == 42 {
+                return i
+            }
+        }
+        
+        return nil
     }
 }
 
