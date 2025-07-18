@@ -162,11 +162,8 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Make text transparent and use kern to minimize spacing
+        // Simply make text transparent - this is the most reliable approach
+        // The characters will be invisible but preserve their space
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
-        
-        // Use kern to pull the character widths to near zero
-        // But not completely zero to avoid the previous cursor issues
-        addAttribute(.kern, value: -8.0, range: range)
     }
 }
