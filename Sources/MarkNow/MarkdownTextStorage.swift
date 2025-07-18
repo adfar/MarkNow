@@ -204,18 +204,33 @@ public class MarkdownTextStorage: NSTextStorage {
         guard length > 0 else { return false }
         let safeCursorPosition = max(0, min(currentCursorPosition, length - 1))
         
-        // Get the line range for the current cursor position
-        let currentLineRange = (string as NSString).lineRange(for: NSRange(location: safeCursorPosition, length: 0))
+        // Get line numbers instead of ranges to avoid newline issues
+        let cursorLineNumber = lineNumber(for: safeCursorPosition)
+        let tokenLineNumber = lineNumber(for: token.range.location)
         
         // Debug logging
         #if DEBUG
-        print("DEBUG: Cursor at \(currentCursorPosition), safe: \(safeCursorPosition)")
-        print("DEBUG: Current line: \(currentLineRange)")
-        print("DEBUG: Token range: \(token.range)")
-        print("DEBUG: Token in current line: \(NSIntersectionRange(token.range, currentLineRange).length > 0)")
+        print("DEBUG: Cursor at \(currentCursorPosition), line \(cursorLineNumber)")
+        print("DEBUG: Token at \(token.range.location), line \(tokenLineNumber)")
+        print("DEBUG: Token in current line: \(cursorLineNumber == tokenLineNumber)")
         #endif
         
-        return NSIntersectionRange(token.range, currentLineRange).length > 0
+        return cursorLineNumber == tokenLineNumber
+    }
+    
+    private func lineNumber(for position: Int) -> Int {
+        let nsString = string as NSString
+        var lineNumber = 0
+        var index = 0
+        
+        while index < position && index < nsString.length {
+            if nsString.character(at: index) == 10 { // ASCII newline character
+                lineNumber += 1
+            }
+            index += 1
+        }
+        
+        return lineNumber
     }
     
     private func hideTextRange(_ range: NSRange) {
