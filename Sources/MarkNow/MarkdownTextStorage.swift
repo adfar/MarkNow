@@ -174,14 +174,17 @@ public class MarkdownTextStorage: NSTextStorage {
         // Only proceed if we have text
         guard length > 0 else { return }
         
-        // Reformat both old and new paragraphs when cursor moves between them
-        let safeOldPosition = max(0, min(oldPosition, length - 1))
-        let oldParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeOldPosition, length: 0))
-        let newParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safePosition, length: 0))
+        // Always reformat to ensure hiding/showing works correctly
+        // Use safe positions for paragraph range calculation
+        let safeOldPosition = max(0, min(oldPosition, max(0, length - 1)))
+        let safeNewPosition = max(0, min(safePosition, max(0, length - 1)))
         
+        let oldParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeOldPosition, length: 0))
+        let newParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeNewPosition, length: 0))
+        
+        // Always reformat both paragraphs to ensure proper hiding behavior
+        reformatParagraph(at: oldParagraphRange)
         if oldParagraphRange.location != newParagraphRange.location {
-            // Cursor moved to different paragraph, reformat both
-            reformatParagraph(at: oldParagraphRange)
             reformatParagraph(at: newParagraphRange)
         }
     }
@@ -211,8 +214,9 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Simply make text transparent - this is the most reliable approach
-        // The characters will be invisible but preserve their space
+        // Use font size 0.01 to make characters nearly invisible
+        // This preserves text but minimizes visual impact
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
+        addAttribute(.font, value: UIFont.systemFont(ofSize: 0.01), range: range)
     }
 }
