@@ -162,13 +162,9 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Use tiny font with baseline offset to align properly with regular text
-        let tinyFont = UIFont.systemFont(ofSize: 1.0)
+        // Simple approach: just make text transparent while keeping normal font
+        // This preserves cursor behavior but makes characters invisible
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
-        addAttribute(.font, value: tinyFont, range: range)
-        
-        // Use baseline offset to align tiny text with normal text baseline
-        let baselineOffset = (defaultFont.capHeight - tinyFont.capHeight) / 2
-        addAttribute(.baselineOffset, value: baselineOffset, range: range)
+        addAttribute(.font, value: defaultFont, range: range)
     }
 }
