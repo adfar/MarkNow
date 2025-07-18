@@ -162,15 +162,13 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Use a tiny font size but add enough line height to maintain cursor
+        // Use tiny font with baseline offset to align properly with regular text
         let tinyFont = UIFont.systemFont(ofSize: 1.0)
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
         addAttribute(.font, value: tinyFont, range: range)
         
-        // Add line height to maintain proper cursor height in this range
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.minimumLineHeight = defaultFont.lineHeight
-        paragraphStyle.maximumLineHeight = defaultFont.lineHeight
-        addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
+        // Use baseline offset to align tiny text with normal text baseline
+        let baselineOffset = (defaultFont.capHeight - tinyFont.capHeight) / 2
+        addAttribute(.baselineOffset, value: baselineOffset, range: range)
     }
 }
