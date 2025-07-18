@@ -166,12 +166,18 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     public func updateCursorPosition(_ position: Int) {
+        // Bounds check the position
+        let safePosition = max(0, min(position, length))
         let oldPosition = currentCursorPosition
-        currentCursorPosition = position
+        currentCursorPosition = safePosition
+        
+        // Only proceed if we have text
+        guard length > 0 else { return }
         
         // Reformat both old and new paragraphs when cursor moves between them
-        let oldParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: oldPosition, length: 0))
-        let newParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: position, length: 0))
+        let safeOldPosition = max(0, min(oldPosition, length - 1))
+        let oldParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeOldPosition, length: 0))
+        let newParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safePosition, length: 0))
         
         if oldParagraphRange.location != newParagraphRange.location {
             // Cursor moved to different paragraph, reformat both
@@ -197,7 +203,10 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func isTokenInCurrentParagraph(_ token: MarkdownToken) -> Bool {
-        let currentParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: currentCursorPosition, length: 0))
+        // Bounds check the cursor position
+        guard length > 0 else { return false }
+        let safeCursorPosition = max(0, min(currentCursorPosition, length - 1))
+        let currentParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeCursorPosition, length: 0))
         return NSIntersectionRange(token.range, currentParagraphRange).length > 0
     }
     
