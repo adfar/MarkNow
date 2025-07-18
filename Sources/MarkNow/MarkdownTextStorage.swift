@@ -162,11 +162,9 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Hide text by making it transparent but preserve font size for cursor
+        // Alternative approach: use expansion attribute to compress characters
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
-        // Keep original font size to maintain cursor height
         addAttribute(.font, value: defaultFont, range: range)
-        // Make the characters zero-width using NSKern (character spacing)
-        addAttribute(.kern, value: -1000, range: range)
+        addAttribute(.expansion, value: -1.0, range: range)
     }
 }
