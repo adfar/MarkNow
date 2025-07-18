@@ -12,24 +12,26 @@ public class MarkdownTextView: UIView {
     public weak var delegate: MarkdownTextViewDelegate?
     
     public var text: String {
-        get { textStorage.string }
+        get { markdownTextStorage.string }
         set { 
-            textStorage.replaceCharacters(in: NSRange(location: 0, length: textStorage.length), with: newValue)
+            markdownTextStorage.replaceCharacters(in: NSRange(location: 0, length: markdownTextStorage.length), with: newValue)
+            // Update cursor position after setting text
+            markdownTextStorage.updateCursorPosition(textView.selectedRange.location)
         }
     }
     
     public var font: UIFont {
-        get { textStorage.font ?? UIFont.systemFont(ofSize: 16) }
+        get { markdownTextStorage.font ?? UIFont.systemFont(ofSize: 16) }
         set { 
-            textStorage.setDefaultFont(newValue)
+            markdownTextStorage.setDefaultFont(newValue)
             textView.font = newValue
         }
     }
     
     public var textColor: UIColor {
-        get { textStorage.textColor ?? UIColor.label }
+        get { markdownTextStorage.textColor ?? UIColor.label }
         set { 
-            textStorage.setDefaultTextColor(newValue)
+            markdownTextStorage.setDefaultTextColor(newValue)
             textView.textColor = newValue
         }
     }
@@ -50,6 +52,12 @@ public class MarkdownTextView: UIView {
     private let layoutManager = NSLayoutManager()
     private let textContainer = NSTextContainer()
     private let textView: UITextView
+    
+    // MARK: - Internal Properties
+    
+    internal var markdownTextStorage: MarkdownTextStorage {
+        return textStorage
+    }
     
     // MARK: - Initialization
     
@@ -105,8 +113,8 @@ public class MarkdownTextView: UIView {
         textView.textColor = .label
         
         // Set default styling
-        textStorage.setDefaultFont(textView.font ?? UIFont.systemFont(ofSize: 16))
-        textStorage.setDefaultTextColor(textView.textColor ?? UIColor.label)
+        markdownTextStorage.setDefaultFont(textView.font ?? UIFont.systemFont(ofSize: 16))
+        markdownTextStorage.setDefaultTextColor(textView.textColor ?? UIColor.label)
     }
     
     // MARK: - Public Methods
@@ -124,7 +132,10 @@ public class MarkdownTextView: UIView {
     }
     
     public override func becomeFirstResponder() -> Bool {
-        return textView.becomeFirstResponder()
+        let result = textView.becomeFirstResponder()
+        // Update cursor position when gaining focus
+        markdownTextStorage.updateCursorPosition(textView.selectedRange.location)
+        return result
     }
     
     public override func resignFirstResponder() -> Bool {
@@ -141,7 +152,14 @@ public class MarkdownTextView: UIView {
 extension MarkdownTextView: UITextViewDelegate {
     
     public func textViewDidChange(_ textView: UITextView) {
+        // Update cursor position in text storage
+        markdownTextStorage.updateCursorPosition(textView.selectedRange.location)
         delegate?.markdownTextViewDidChange(self)
+    }
+    
+    public func textViewDidChangeSelection(_ textView: UITextView) {
+        // Update cursor position when selection changes (including cursor movement)
+        markdownTextStorage.updateCursorPosition(textView.selectedRange.location)
     }
     
     public func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
@@ -151,7 +169,7 @@ extension MarkdownTextView: UITextViewDelegate {
 
 // MARK: - MarkdownTextStorage Extensions
 
-private extension MarkdownTextStorage {
+extension MarkdownTextStorage {
     var font: UIFont? {
         if length == 0 { return nil }
         return attribute(.font, at: 0, effectiveRange: nil) as? UIFont

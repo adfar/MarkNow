@@ -7,6 +7,7 @@ public class MarkdownTextStorage: NSTextStorage {
     
     private var defaultFont: UIFont = .systemFont(ofSize: 16)
     private var defaultTextColor: UIColor = .label
+    private var currentCursorPosition: Int = 0
     
     public override var string: String {
         return _attributedString.string
@@ -81,17 +82,18 @@ public class MarkdownTextStorage: NSTextStorage {
         let range = token.range
         
         if token.isComplete {
-            // Hide the markdown syntax completely
-            let startSyntaxRange = NSRange(location: range.location, length: 2)
-            let endSyntaxRange = NSRange(location: range.location + range.length - 2, length: 2)
-            
-            hideTextRange(startSyntaxRange)
-            hideTextRange(endSyntaxRange)
-            
-            // Bold the content
             let contentRange = NSRange(location: range.location + 2, length: range.length - 4)
             let boldFont = UIFont.boldSystemFont(ofSize: defaultFont.pointSize)
             addAttribute(.font, value: boldFont, range: contentRange)
+            
+            // Only hide symbols if cursor is NOT in this paragraph
+            if !isTokenInCurrentParagraph(token) {
+                let startSyntaxRange = NSRange(location: range.location, length: 2)
+                let endSyntaxRange = NSRange(location: range.location + range.length - 2, length: 2)
+                
+                hideTextRange(startSyntaxRange)
+                hideTextRange(endSyntaxRange)
+            }
         }
     }
     
@@ -106,17 +108,18 @@ public class MarkdownTextStorage: NSTextStorage {
         let range = token.range
         
         if token.isComplete {
-            // Hide the markdown syntax completely
-            let startSyntaxRange = NSRange(location: range.location, length: 1)
-            let endSyntaxRange = NSRange(location: range.location + range.length - 1, length: 1)
-            
-            hideTextRange(startSyntaxRange)
-            hideTextRange(endSyntaxRange)
-            
-            // Italicize the content
             let contentRange = NSRange(location: range.location + 1, length: range.length - 2)
             let italicFont = UIFont.italicSystemFont(ofSize: defaultFont.pointSize)
             addAttribute(.font, value: italicFont, range: contentRange)
+            
+            // Only hide symbols if cursor is NOT in this paragraph
+            if !isTokenInCurrentParagraph(token) {
+                let startSyntaxRange = NSRange(location: range.location, length: 1)
+                let endSyntaxRange = NSRange(location: range.location + range.length - 1, length: 1)
+                
+                hideTextRange(startSyntaxRange)
+                hideTextRange(endSyntaxRange)
+            }
         }
     }
     
@@ -131,18 +134,19 @@ public class MarkdownTextStorage: NSTextStorage {
         let range = token.range
         
         if token.isComplete {
-            // Hide the markdown syntax (# symbols and space)
             let hashCount = level
-            let syntaxRange = NSRange(location: range.location, length: hashCount + 1) // +1 for space
-            hideTextRange(syntaxRange)
-            
-            // Apply header styling to content
             let contentRange = NSRange(location: range.location + hashCount + 1, length: range.length - hashCount - 1)
             let headerSize = max(defaultFont.pointSize + CGFloat(6 - level) * 2, defaultFont.pointSize)
             let headerFont = UIFont.boldSystemFont(ofSize: headerSize)
             
             addAttribute(.font, value: headerFont, range: contentRange)
             addAttribute(.foregroundColor, value: defaultTextColor, range: contentRange)
+            
+            // Only hide symbols if cursor is NOT in this paragraph
+            if !isTokenInCurrentParagraph(token) {
+                let syntaxRange = NSRange(location: range.location, length: hashCount + 1) // +1 for space
+                hideTextRange(syntaxRange)
+            }
         }
     }
     
@@ -159,6 +163,42 @@ public class MarkdownTextStorage: NSTextStorage {
     
     public func setDefaultTextColor(_ color: UIColor) {
         defaultTextColor = color
+    }
+    
+    public func updateCursorPosition(_ position: Int) {
+        let oldPosition = currentCursorPosition
+        currentCursorPosition = position
+        
+        // Reformat both old and new paragraphs when cursor moves between them
+        let oldParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: oldPosition, length: 0))
+        let newParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: position, length: 0))
+        
+        if oldParagraphRange.location != newParagraphRange.location {
+            // Cursor moved to different paragraph, reformat both
+            reformatParagraph(at: oldParagraphRange)
+            reformatParagraph(at: newParagraphRange)
+        }
+    }
+    
+    private func reformatParagraph(at range: NSRange) {
+        // Reset attributes for the paragraph
+        removeAttribute(.font, range: range)
+        removeAttribute(.foregroundColor, range: range)
+        
+        // Apply default attributes
+        addAttribute(.font, value: defaultFont, range: range)
+        addAttribute(.foregroundColor, value: defaultTextColor, range: range)
+        
+        // Parse and format the paragraph
+        let tokens = parser.parseTokens(in: string, range: range)
+        for token in tokens {
+            applyFormatting(for: token)
+        }
+    }
+    
+    private func isTokenInCurrentParagraph(_ token: MarkdownToken) -> Bool {
+        let currentParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: currentCursorPosition, length: 0))
+        return NSIntersectionRange(token.range, currentParagraphRange).length > 0
     }
     
     private func hideTextRange(_ range: NSRange) {
