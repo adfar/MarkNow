@@ -162,9 +162,15 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Alternative approach: use expansion attribute to compress characters
+        // Use a tiny font size but add enough line height to maintain cursor
+        let tinyFont = UIFont.systemFont(ofSize: 1.0)
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
-        addAttribute(.font, value: defaultFont, range: range)
-        addAttribute(.expansion, value: -1.0, range: range)
+        addAttribute(.font, value: tinyFont, range: range)
+        
+        // Add line height to maintain proper cursor height in this range
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.minimumLineHeight = defaultFont.lineHeight
+        paragraphStyle.maximumLineHeight = defaultFont.lineHeight
+        addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
     }
 }
