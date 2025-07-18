@@ -159,6 +159,9 @@ extension MarkdownTextView: UITextViewDelegate {
     
     public func textViewDidChangeSelection(_ textView: UITextView) {
         // Update cursor position when selection changes (including cursor movement)
+        #if DEBUG
+        print("DEBUG: Cursor moved to position \(textView.selectedRange.location)")
+        #endif
         markdownTextStorage.updateCursorPosition(textView.selectedRange.location)
     }
     

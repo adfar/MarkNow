@@ -166,6 +166,10 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     public func updateCursorPosition(_ position: Int) {
+        #if DEBUG
+        print("DEBUG: updateCursorPosition called with \(position), current: \(currentCursorPosition)")
+        #endif
+        
         // Bounds check the position
         let safePosition = max(0, min(position, length))
         let oldPosition = currentCursorPosition
@@ -174,19 +178,9 @@ public class MarkdownTextStorage: NSTextStorage {
         // Only proceed if we have text
         guard length > 0 else { return }
         
-        // Always reformat to ensure hiding/showing works correctly
-        // Use safe positions for paragraph range calculation
-        let safeOldPosition = max(0, min(oldPosition, max(0, length - 1)))
-        let safeNewPosition = max(0, min(safePosition, max(0, length - 1)))
-        
-        let oldParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeOldPosition, length: 0))
-        let newParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeNewPosition, length: 0))
-        
-        // Always reformat both paragraphs to ensure proper hiding behavior
-        reformatParagraph(at: oldParagraphRange)
-        if oldParagraphRange.location != newParagraphRange.location {
-            reformatParagraph(at: newParagraphRange)
-        }
+        // Reformat the entire document for now to ensure it works
+        let fullRange = NSRange(location: 0, length: length)
+        reformatParagraph(at: fullRange)
     }
     
     private func reformatParagraph(at range: NSRange) {
@@ -210,6 +204,15 @@ public class MarkdownTextStorage: NSTextStorage {
         guard length > 0 else { return false }
         let safeCursorPosition = max(0, min(currentCursorPosition, length - 1))
         let currentParagraphRange = (string as NSString).paragraphRange(for: NSRange(location: safeCursorPosition, length: 0))
+        
+        // Debug logging
+        #if DEBUG
+        print("DEBUG: Cursor at \(currentCursorPosition), safe: \(safeCursorPosition)")
+        print("DEBUG: Current paragraph: \(currentParagraphRange)")
+        print("DEBUG: Token range: \(token.range)")
+        print("DEBUG: Token in current paragraph: \(NSIntersectionRange(token.range, currentParagraphRange).length > 0)")
+        #endif
+        
         return NSIntersectionRange(token.range, currentParagraphRange).length > 0
     }
     
