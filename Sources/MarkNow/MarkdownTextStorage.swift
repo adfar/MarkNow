@@ -66,6 +66,10 @@ public class MarkdownTextStorage: NSTextStorage {
             applyItalicFormatting(for: token)
         case .header(let level):
             applyHeaderFormatting(for: token, level: level)
+        case .incompleteBold:
+            applyIncompleteBoldFormatting(for: token)
+        case .incompleteItalic:
+            applyIncompleteItalicFormatting(for: token)
         case .plain:
             break
         }
@@ -74,50 +78,70 @@ public class MarkdownTextStorage: NSTextStorage {
     private func applyBoldFormatting(for token: MarkdownToken) {
         let range = token.range
         
-        // Dim the markdown syntax
-        let startSyntaxRange = NSRange(location: range.location, length: 2)
-        let endSyntaxRange = NSRange(location: range.location + range.length - 2, length: 2)
+        if token.isComplete {
+            // Hide the markdown syntax completely
+            let startSyntaxRange = NSRange(location: range.location, length: 2)
+            let endSyntaxRange = NSRange(location: range.location + range.length - 2, length: 2)
+            
+            hideTextRange(startSyntaxRange)
+            hideTextRange(endSyntaxRange)
+            
+            // Bold the content
+            let contentRange = NSRange(location: range.location + 2, length: range.length - 4)
+            let boldFont = UIFont.boldSystemFont(ofSize: defaultFont.pointSize)
+            addAttribute(.font, value: boldFont, range: contentRange)
+        }
+    }
+    
+    private func applyIncompleteBoldFormatting(for token: MarkdownToken) {
+        let range = token.range
         
-        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: startSyntaxRange)
-        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: endSyntaxRange)
-        
-        // Bold the content
-        let contentRange = NSRange(location: range.location + 2, length: range.length - 4)
-        let boldFont = UIFont.boldSystemFont(ofSize: defaultFont.pointSize)
-        addAttribute(.font, value: boldFont, range: contentRange)
+        // Show incomplete syntax dimmed
+        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
     }
     
     private func applyItalicFormatting(for token: MarkdownToken) {
         let range = token.range
         
-        // Dim the markdown syntax
-        let startSyntaxRange = NSRange(location: range.location, length: 1)
-        let endSyntaxRange = NSRange(location: range.location + range.length - 1, length: 1)
+        if token.isComplete {
+            // Hide the markdown syntax completely
+            let startSyntaxRange = NSRange(location: range.location, length: 1)
+            let endSyntaxRange = NSRange(location: range.location + range.length - 1, length: 1)
+            
+            hideTextRange(startSyntaxRange)
+            hideTextRange(endSyntaxRange)
+            
+            // Italicize the content
+            let contentRange = NSRange(location: range.location + 1, length: range.length - 2)
+            let italicFont = UIFont.italicSystemFont(ofSize: defaultFont.pointSize)
+            addAttribute(.font, value: italicFont, range: contentRange)
+        }
+    }
+    
+    private func applyIncompleteItalicFormatting(for token: MarkdownToken) {
+        let range = token.range
         
-        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: startSyntaxRange)
-        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: endSyntaxRange)
-        
-        // Italicize the content
-        let contentRange = NSRange(location: range.location + 1, length: range.length - 2)
-        let italicFont = UIFont.italicSystemFont(ofSize: defaultFont.pointSize)
-        addAttribute(.font, value: italicFont, range: contentRange)
+        // Show incomplete syntax dimmed
+        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
     }
     
     private func applyHeaderFormatting(for token: MarkdownToken, level: Int) {
         let range = token.range
         
-        // Dim the markdown syntax (# symbols and space)
-        let hashCount = level
-        let syntaxRange = NSRange(location: range.location, length: hashCount + 1) // +1 for space
-        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: syntaxRange)
-        
-        // Apply header styling to content
-        let contentRange = NSRange(location: range.location + hashCount + 1, length: range.length - hashCount - 1)
-        let headerSize = max(defaultFont.pointSize + CGFloat(6 - level) * 2, defaultFont.pointSize)
-        let headerFont = UIFont.boldSystemFont(ofSize: headerSize)
-        
-        addAttribute(.font, value: headerFont, range: contentRange)
-        addAttribute(.foregroundColor, value: defaultTextColor, range: contentRange)
+        if token.isComplete {
+            // Hide the markdown syntax (# symbols and space)
+            let hashCount = level
+            let syntaxRange = NSRange(location: range.location, length: hashCount + 1) // +1 for space
+            hideTextRange(syntaxRange)
+            
+            // Apply header styling to content
+            let contentRange = NSRange(location: range.location + hashCount + 1, length: range.length - hashCount - 1)
+            let headerSize = max(defaultFont.pointSize + CGFloat(6 - level) * 2, defaultFont.pointSize)
+            let headerFont = UIFont.boldSystemFont(ofSize: headerSize)
+            
+            addAttribute(.font, value: headerFont, range: contentRange)
+            addAttribute(.foregroundColor, value: defaultTextColor, range: contentRange)
+        }
     }
     
     public func setDefaultFont(_ font: UIFont) {
@@ -126,5 +150,11 @@ public class MarkdownTextStorage: NSTextStorage {
     
     public func setDefaultTextColor(_ color: UIColor) {
         defaultTextColor = color
+    }
+    
+    private func hideTextRange(_ range: NSRange) {
+        // Hide text by making it transparent and zero-width
+        addAttribute(.foregroundColor, value: UIColor.clear, range: range)
+        addAttribute(.font, value: UIFont.systemFont(ofSize: 0.1), range: range)
     }
 }
