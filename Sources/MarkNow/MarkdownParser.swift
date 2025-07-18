@@ -13,6 +13,7 @@ public struct MarkdownToken {
         case plain
         case incompleteBold
         case incompleteItalic
+        case incompleteHeader(level: Int)
     }
 }
 
@@ -20,12 +21,14 @@ public class MarkdownParser {
     private let boldPattern = #"\*\*(.*?)\*\*"#
     private let italicPattern = #"\*(.*?)\*"#
     private let headerPattern = #"^(#{1,6})\s+(.*)"#
+    private let incompleteHeaderPattern = #"^(#{1,6})\s*$"#
     private let incompleteBoldPattern = #"\*\*(?!\*)"#
     private let incompleteItalicPattern = #"(?<!\*)\*(?!\*)"#
     
     private lazy var boldRegex = try! NSRegularExpression(pattern: boldPattern, options: [])
     private lazy var italicRegex = try! NSRegularExpression(pattern: italicPattern, options: [])
     private lazy var headerRegex = try! NSRegularExpression(pattern: headerPattern, options: [.anchorsMatchLines])
+    private lazy var incompleteHeaderRegex = try! NSRegularExpression(pattern: incompleteHeaderPattern, options: [.anchorsMatchLines])
     private lazy var incompleteBoldRegex = try! NSRegularExpression(pattern: incompleteBoldPattern, options: [])
     private lazy var incompleteItalicRegex = try! NSRegularExpression(pattern: incompleteItalicPattern, options: [])
     
@@ -105,6 +108,22 @@ public class MarkdownParser {
                     type: .incompleteItalic,
                     range: match.range,
                     content: "*",
+                    isComplete: false
+                ))
+            }
+        }
+        
+        // Find incomplete headers (excluding areas already covered)
+        let incompleteHeaderMatches = incompleteHeaderRegex.matches(in: text, options: [], range: searchRange)
+        for match in incompleteHeaderMatches {
+            if !isRangeOverlapping(match.range, with: tokens) {
+                let hashRange = match.range(at: 1)
+                let hashCount = nsText.substring(with: hashRange).count
+                
+                tokens.append(MarkdownToken(
+                    type: .incompleteHeader(level: hashCount),
+                    range: match.range,
+                    content: nsText.substring(with: hashRange),
                     isComplete: false
                 ))
             }

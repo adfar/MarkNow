@@ -70,6 +70,8 @@ public class MarkdownTextStorage: NSTextStorage {
             applyIncompleteBoldFormatting(for: token)
         case .incompleteItalic:
             applyIncompleteItalicFormatting(for: token)
+        case .incompleteHeader(let level):
+            applyIncompleteHeaderFormatting(for: token, level: level)
         case .plain:
             break
         }
@@ -144,6 +146,13 @@ public class MarkdownTextStorage: NSTextStorage {
         }
     }
     
+    private func applyIncompleteHeaderFormatting(for token: MarkdownToken, level: Int) {
+        let range = token.range
+        
+        // Show incomplete syntax dimmed
+        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
+    }
+    
     public func setDefaultFont(_ font: UIFont) {
         defaultFont = font
     }
@@ -153,8 +162,11 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func hideTextRange(_ range: NSRange) {
-        // Hide text by making it transparent and zero-width
+        // Hide text by making it transparent but preserve font size for cursor
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
-        addAttribute(.font, value: UIFont.systemFont(ofSize: 0.1), range: range)
+        // Keep original font size to maintain cursor height
+        addAttribute(.font, value: defaultFont, range: range)
+        // Make the characters zero-width using NSKern (character spacing)
+        addAttribute(.kern, value: -1000, range: range)
     }
 }
