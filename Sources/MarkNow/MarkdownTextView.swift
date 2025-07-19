@@ -254,12 +254,12 @@ extension MarkdownTextView: UITextViewDelegate {
                 return true
             }
             
-            // Just add space after #
-            let headerText = "# "
+            // Just insert the # without auto-adding space
+            let headerText = "#"
             markdownTextStorage.replaceCharacters(in: range, with: headerText)
             
-            // Position cursor after the space
-            let newPosition = insertionPoint + 2
+            // Position cursor after the #
+            let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             return true
         }
