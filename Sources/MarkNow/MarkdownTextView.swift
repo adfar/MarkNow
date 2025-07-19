@@ -14,6 +14,7 @@ public class MarkdownTextView: UIView {
     public var text: String {
         get { markdownTextStorage.string }
         set { 
+            markdownTextStorage.setInitialText(newValue)
             markdownTextStorage.replaceCharacters(in: NSRange(location: 0, length: markdownTextStorage.length), with: newValue)
             // When setting text programmatically, position cursor at beginning
             textView.selectedRange = NSRange(location: 0, length: 0)

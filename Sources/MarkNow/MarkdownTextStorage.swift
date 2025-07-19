@@ -9,6 +9,11 @@ public class MarkdownTextStorage: NSTextStorage {
     private var defaultTextColor: UIColor = .label
     private var currentCursorPosition: Int = 0
     
+    // Text state management for bullet point replacement
+    private var originalText: String = ""
+    private var isInReplacementMode = false
+    private var activeReplacements: [NSRange: String] = [:] // Maps ranges to original text
+    
     public override var string: String {
         return _attributedString.string
     }
@@ -18,6 +23,21 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     public override func replaceCharacters(in range: NSRange, with str: String) {
+        // Don't update original text if we're in replacement mode (internal bullet replacement)
+        if !isInReplacementMode {
+            // Clear active replacements for significant text changes to handle undo/redo
+            if str.count != range.length {
+                activeReplacements.removeAll()
+            }
+            
+            // Update original text to match the change
+            let nsOriginal = NSMutableString(string: originalText)
+            if range.location <= nsOriginal.length && range.location + range.length <= nsOriginal.length {
+                nsOriginal.replaceCharacters(in: range, with: str)
+                originalText = nsOriginal as String
+            }
+        }
+        
         beginEditing()
         _attributedString.replaceCharacters(in: range, with: str)
         edited(.editedCharacters, range: range, changeInLength: str.count - range.length)
@@ -37,6 +57,9 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func performMarkdownFormatting() {
+        // Don't format during replacement operations to prevent infinite loops
+        guard !isInReplacementMode else { return }
+        
         let range = editedRange
         if range.location == NSNotFound {
             return
@@ -173,11 +196,15 @@ public class MarkdownTextStorage: NSTextStorage {
             addAttribute(.font, value: defaultFont, range: contentRange)
             addAttribute(.foregroundColor, value: defaultTextColor, range: contentRange)
             
-            // Only hide marker if cursor is NOT in this block
-            if !isTokenInCurrentBlock(token) {
-                // Hide the marker and space for now
-                // TODO: Replace with actual bullet point rendering
-                hideTextRange(markerRange)
+            let cursorInBlock = isTokenInCurrentBlock(token)
+            
+            // Handle bullet replacement based on cursor position
+            if !cursorInBlock {
+                // Replace marker with bullet if not already done
+                replaceBulletMarker(at: markerRange)
+            } else {
+                // Restore original marker if cursor is in block
+                restoreOriginalMarker(at: markerRange)
             }
         }
     }
@@ -195,6 +222,11 @@ public class MarkdownTextStorage: NSTextStorage {
     
     public func setDefaultTextColor(_ color: UIColor) {
         defaultTextColor = color
+    }
+    
+    public func setInitialText(_ text: String) {
+        originalText = text
+        activeReplacements.removeAll()
     }
     
     public func updateCursorPosition(_ position: Int) {
@@ -261,6 +293,74 @@ public class MarkdownTextStorage: NSTextStorage {
         // This preserves text but minimizes visual impact
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
         addAttribute(.font, value: UIFont.systemFont(ofSize: 0.01), range: range)
+    }
+    
+    private func replaceBulletMarker(at range: NSRange) {
+        // Store current cursor position to preserve it
+        let savedCursorPosition = currentCursorPosition
+        
+        // Check if this range already has a bullet by checking the actual character
+        let currentChar = (_attributedString.string as NSString).substring(with: NSRange(location: range.location, length: 1))
+        if currentChar == "•" {
+            return // Already has bullet
+        }
+        
+        // Store the original marker text using location as key (more stable than range)
+        let originalMarker = (_attributedString.string as NSString).substring(with: range)
+        activeReplacements[range] = originalMarker
+        
+        // Replace with bullet
+        isInReplacementMode = true
+        let bulletRange = NSRange(location: range.location, length: 1) // Just the marker char
+        
+        // Replace marker with bullet, keep the space
+        _attributedString.replaceCharacters(in: bulletRange, with: "•")
+        
+        // Apply proper formatting to the bullet
+        addAttribute(.font, value: defaultFont, range: bulletRange)
+        addAttribute(.foregroundColor, value: defaultTextColor, range: bulletRange)
+        
+        // Ensure space after bullet also has proper formatting
+        let spaceRange = NSRange(location: range.location + 1, length: 1)
+        if spaceRange.location < _attributedString.length {
+            addAttribute(.font, value: defaultFont, range: spaceRange)
+            addAttribute(.foregroundColor, value: defaultTextColor, range: spaceRange)
+        }
+        
+        // Restore cursor position if it was affected
+        if savedCursorPosition >= range.location {
+            currentCursorPosition = savedCursorPosition
+        }
+        
+        isInReplacementMode = false
+    }
+    
+    private func restoreOriginalMarker(at range: NSRange) {
+        // Store current cursor position to preserve it
+        let savedCursorPosition = currentCursorPosition
+        
+        // Check if this actually has a bullet to restore
+        let currentChar = (_attributedString.string as NSString).substring(with: NSRange(location: range.location, length: 1))
+        if currentChar != "•" {
+            return // Not a bullet, nothing to restore
+        }
+        
+        // Find the original marker by checking what it should be from original text
+        let originalRange = NSRange(location: range.location, length: 2)
+        if originalRange.location + originalRange.length <= originalText.count {
+            let originalMarker = (originalText as NSString).substring(with: originalRange)
+            
+            // Restore the original marker
+            isInReplacementMode = true
+            _attributedString.replaceCharacters(in: range, with: originalMarker)
+            
+            // Restore cursor position if it was affected
+            if savedCursorPosition >= range.location {
+                currentCursorPosition = savedCursorPosition + (originalMarker.count - range.length)
+            }
+            
+            isInReplacementMode = false
+        }
     }
     
     private func replaceTextRangeVisually(_ range: NSRange, with replacement: String) {
