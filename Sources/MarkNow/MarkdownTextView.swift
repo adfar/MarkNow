@@ -109,7 +109,7 @@ public class MarkdownTextView: UIView {
         ])
         
         // Configure text view
-        textView.backgroundColor = .clear
+        textView.backgroundColor = .systemYellow.withAlphaComponent(0.2) // Temporary: make background visible to see padding
         textView.delegate = self
         textView.font = UIFont.systemFont(ofSize: 16)
         textView.textColor = .label
@@ -118,6 +118,7 @@ public class MarkdownTextView: UIView {
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         
         print("DEBUG: setupTextView - textContainerInset set to: \(textView.textContainerInset)")
+        print("DEBUG: setupTextView - backgroundColor set to test padding visibility")
         
         // Set default styling
         markdownTextStorage.setDefaultFont(textView.font ?? UIFont.systemFont(ofSize: 16))
@@ -216,15 +217,14 @@ extension MarkdownTextView: UITextViewDelegate {
         
         // Check if we're typing a second asterisk (for bold)
         if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 42 { // ASCII for *
-            // We're typing the second *, just add closing ** (don't add another *)
+            // We're typing the second *, DON'T insert it, just add closing **
             print("DEBUG: Detected second asterisk for bold completion")
-            markdownTextStorage.replaceCharacters(in: range, with: "*")
             
-            // Add closing ** after current position
-            let closingRange = NSRange(location: insertionPoint + 1, length: 0)
+            // Add closing ** at current position (don't insert the current *)
+            let closingRange = NSRange(location: insertionPoint, length: 0)
             markdownTextStorage.replaceCharacters(in: closingRange, with: "**")
             
-            // Position cursor between the ** pairs (after the first **)
+            // Position cursor between the ** pairs
             let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             print("DEBUG: Bold completion finished, cursor at: \(newPosition)")
