@@ -281,29 +281,57 @@ extension MarkdownTextView: UITextViewDelegate {
         let currentText = markdownTextStorage.string as NSString
         let insertionPoint = range.location
         
-        // Check if we're typing after one backtick (for inline code completion)
+        // Check if we're typing a third backtick (for code block completion)
+        if insertionPoint > 1 && 
+           currentText.character(at: insertionPoint - 1) == 96 && 
+           currentText.character(at: insertionPoint - 2) == 96 {
+            // We're typing the third `, create a code block
+            
+            // Add closing ``` with newlines
+            let codeBlock = "`\n\n```"
+            let closingRange = NSRange(location: insertionPoint, length: 0)
+            markdownTextStorage.replaceCharacters(in: closingRange, with: codeBlock)
+            
+            // Position cursor inside the code block (after first newline)
+            let newPosition = insertionPoint + 2
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
+        // Check if we're typing a second backtick (for inline code completion)
         if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 96 { // ASCII for `
+            // We're typing the second `, DON'T insert it, just add closing `
+            
             // Add closing ` at current position (don't insert the current `)
             let closingRange = NSRange(location: insertionPoint, length: 0)
             markdownTextStorage.replaceCharacters(in: closingRange, with: "`")
+            
+            // Position cursor between the ` pairs
             let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             return true
         }
         
-        // Check if we're typing after two backticks (for potential code block)
-        if insertionPoint > 1 && 
-           currentText.character(at: insertionPoint - 1) == 96 && 
-           currentText.character(at: insertionPoint - 2) == 96 {
-            // Add closing ``` at current position and create code block
-            let closingRange = NSRange(location: insertionPoint, length: 0)
-            markdownTextStorage.replaceCharacters(in: closingRange, with: "`\n\n```")
-            let newPosition = insertionPoint + 2 // Position cursor inside the code block
+        // Check if there's selected text to wrap with backticks
+        if range.length > 0 {
+            let selectedText = currentText.substring(with: range)
+            let wrappedText = "`\(selectedText)`"
+            markdownTextStorage.replaceCharacters(in: range, with: wrappedText)
+            
+            // Position cursor after the wrapped text
+            let newPosition = range.location + wrappedText.count
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             return true
         }
         
-        return false
+        // Insert single ` and add closing `
+        let backtickPair = "``"
+        markdownTextStorage.replaceCharacters(in: range, with: backtickPair)
+        
+        // Position cursor between the backticks
+        let newPosition = insertionPoint + 1
+        textView.selectedRange = NSRange(location: newPosition, length: 0)
+        return true
     }
     
     private func handleReturnInsertion(at range: NSRange) -> Bool {
