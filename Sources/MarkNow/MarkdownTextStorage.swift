@@ -92,6 +92,10 @@ public class MarkdownTextStorage: NSTextStorage {
             applyHeaderFormatting(for: token, level: level)
         case .list:
             applyListFormatting(for: token)
+        case .inlineCode:
+            applyInlineCodeFormatting(for: token)
+        case .codeBlock:
+            applyCodeBlockFormatting(for: token)
         case .incompleteBold:
             applyIncompleteBoldFormatting(for: token)
         case .incompleteItalic:
@@ -100,6 +104,10 @@ public class MarkdownTextStorage: NSTextStorage {
             applyIncompleteHeaderFormatting(for: token, level: level)
         case .incompleteList:
             applyIncompleteListFormatting(for: token)
+        case .incompleteInlineCode:
+            applyIncompleteInlineCodeFormatting(for: token)
+        case .incompleteCodeBlock:
+            applyIncompleteCodeBlockFormatting(for: token)
         case .plain:
             break
         }
@@ -210,6 +218,64 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     private func applyIncompleteListFormatting(for token: MarkdownToken) {
+        let range = token.range
+        
+        // Show incomplete syntax dimmed
+        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
+    }
+    
+    private func applyInlineCodeFormatting(for token: MarkdownToken) {
+        let range = token.range
+        
+        if token.isComplete {
+            let contentRange = NSRange(location: range.location + 1, length: range.length - 2)
+            let codeFont = UIFont(name: "Menlo", size: defaultFont.pointSize) ?? UIFont.monospacedSystemFont(ofSize: defaultFont.pointSize, weight: .regular)
+            
+            addAttribute(.font, value: codeFont, range: contentRange)
+            addAttribute(.foregroundColor, value: UIColor.systemRed, range: contentRange)
+            addAttribute(.backgroundColor, value: UIColor.systemGray6, range: contentRange)
+            
+            // Only hide backticks if cursor is NOT in this block
+            if !isTokenInCurrentBlock(token) {
+                let startBacktickRange = NSRange(location: range.location, length: 1)
+                let endBacktickRange = NSRange(location: range.location + range.length - 1, length: 1)
+                
+                hideTextRange(startBacktickRange)
+                hideTextRange(endBacktickRange)
+            }
+        }
+    }
+    
+    private func applyCodeBlockFormatting(for token: MarkdownToken) {
+        let range = token.range
+        
+        if token.isComplete {
+            let contentRange = NSRange(location: range.location + 3, length: range.length - 6)
+            let codeFont = UIFont(name: "Menlo", size: defaultFont.pointSize) ?? UIFont.monospacedSystemFont(ofSize: defaultFont.pointSize, weight: .regular)
+            
+            addAttribute(.font, value: codeFont, range: contentRange)
+            addAttribute(.foregroundColor, value: UIColor.systemBlue, range: contentRange)
+            addAttribute(.backgroundColor, value: UIColor.systemGray6, range: contentRange)
+            
+            // Only hide triple backticks if cursor is NOT in this block
+            if !isTokenInCurrentBlock(token) {
+                let startBackticksRange = NSRange(location: range.location, length: 3)
+                let endBackticksRange = NSRange(location: range.location + range.length - 3, length: 3)
+                
+                hideTextRange(startBackticksRange)
+                hideTextRange(endBackticksRange)
+            }
+        }
+    }
+    
+    private func applyIncompleteInlineCodeFormatting(for token: MarkdownToken) {
+        let range = token.range
+        
+        // Show incomplete syntax dimmed
+        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
+    }
+    
+    private func applyIncompleteCodeBlockFormatting(for token: MarkdownToken) {
         let range = token.range
         
         // Show incomplete syntax dimmed

@@ -195,6 +195,10 @@ extension MarkdownTextView: UITextViewDelegate {
             return handleHashInsertion(at: range)
         }
         
+        if text == "`" {
+            return handleBacktickInsertion(at: range)
+        }
+        
         if text == "\n" {
             return handleReturnInsertion(at: range)
         }
@@ -266,6 +270,35 @@ extension MarkdownTextView: UITextViewDelegate {
             
             // Position cursor after the #
             let newPosition = insertionPoint + 1
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
+        return false
+    }
+    
+    private func handleBacktickInsertion(at range: NSRange) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        let insertionPoint = range.location
+        
+        // Check if we're typing after one backtick (for inline code completion)
+        if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 96 { // ASCII for `
+            // Add closing ` at current position (don't insert the current `)
+            let closingRange = NSRange(location: insertionPoint, length: 0)
+            markdownTextStorage.replaceCharacters(in: closingRange, with: "`")
+            let newPosition = insertionPoint + 1
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
+        // Check if we're typing after two backticks (for potential code block)
+        if insertionPoint > 1 && 
+           currentText.character(at: insertionPoint - 1) == 96 && 
+           currentText.character(at: insertionPoint - 2) == 96 {
+            // Add closing ``` at current position and create code block
+            let closingRange = NSRange(location: insertionPoint, length: 0)
+            markdownTextStorage.replaceCharacters(in: closingRange, with: "`\n\n```")
+            let newPosition = insertionPoint + 2 // Position cursor inside the code block
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             return true
         }
@@ -356,6 +389,11 @@ extension MarkdownTextView: UITextViewDelegate {
             return handleListMarkerDeletion(at: deletionPoint)
         }
         
+        // Handle backtick deletion
+        if charToDelete == 96 { // ASCII for `
+            return handleBacktickDeletion(at: deletionPoint)
+        }
+        
         return false
     }
     
@@ -430,6 +468,40 @@ extension MarkdownTextView: UITextViewDelegate {
             // Position cursor where the marker was
             textView.selectedRange = NSRange(location: position, length: 0)
             return true
+        }
+        
+        return false
+    }
+    
+    private func handleBacktickDeletion(at position: Int) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        
+        // Check for `` pair deletion (inline code)
+        if position < currentText.length - 1 && currentText.character(at: position + 1) == 96 {
+            // Delete both backticks
+            let rangeToDelete = NSRange(location: position, length: 2)
+            markdownTextStorage.replaceCharacters(in: rangeToDelete, with: "")
+            
+            // Position cursor where the first backtick was
+            textView.selectedRange = NSRange(location: position, length: 0)
+            return true
+        }
+        
+        // Check for ``` triple backtick deletion (code block)
+        if position < currentText.length - 2 && 
+           currentText.character(at: position + 1) == 96 && 
+           currentText.character(at: position + 2) == 96 {
+            
+            // Find the matching closing ```
+            let searchText = currentText.substring(from: position + 3)
+            if let closingRange = searchText.range(of: "```") {
+                let absoluteClosingStart = position + 3 + searchText.distance(from: searchText.startIndex, to: closingRange.lowerBound)
+                let totalRange = NSRange(location: position, length: absoluteClosingStart - position + 3)
+                
+                markdownTextStorage.replaceCharacters(in: totalRange, with: "")
+                textView.selectedRange = NSRange(location: position, length: 0)
+                return true
+            }
         }
         
         return false
