@@ -94,7 +94,6 @@ public class MarkdownTextView: UIView {
         textContainer.widthTracksTextView = true
         textContainer.heightTracksTextView = false
         
-        print("DEBUG: setupTextKit - lineFragmentPadding set to: \(textContainer.lineFragmentPadding)")
     }
     
     private func setupTextView() {
@@ -109,7 +108,7 @@ public class MarkdownTextView: UIView {
         ])
         
         // Configure text view
-        textView.backgroundColor = .systemYellow.withAlphaComponent(0.2) // Temporary: make background visible to see padding
+        textView.backgroundColor = .clear
         textView.delegate = self
         textView.font = UIFont.systemFont(ofSize: 16)
         textView.textColor = .label
@@ -117,8 +116,6 @@ public class MarkdownTextView: UIView {
         // Add proper text container insets for better cursor positioning
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         
-        print("DEBUG: setupTextView - textContainerInset set to: \(textView.textContainerInset)")
-        print("DEBUG: setupTextView - backgroundColor set to test padding visibility")
         
         // Set default styling
         markdownTextStorage.setDefaultFont(textView.font ?? UIFont.systemFont(ofSize: 16))
@@ -154,10 +151,6 @@ public class MarkdownTextView: UIView {
         return textView.isFirstResponder
     }
     
-    // Debug method to verify version
-    public func getVersionInfo() -> String {
-        return "MarkNow v1.1.0 - LineFragmentPadding: \(textContainer.lineFragmentPadding), TextContainerInset: \(textView.textContainerInset)"
-    }
 }
 
 // MARK: - UITextViewDelegate
@@ -172,9 +165,6 @@ extension MarkdownTextView: UITextViewDelegate {
     
     public func textViewDidChangeSelection(_ textView: UITextView) {
         // Update cursor position when selection changes (including cursor movement)
-        #if DEBUG
-        print("DEBUG: Cursor moved to position \(textView.selectedRange.location)")
-        #endif
         markdownTextStorage.updateCursorPosition(textView.selectedRange.location)
     }
     
@@ -188,26 +178,21 @@ extension MarkdownTextView: UITextViewDelegate {
     }
     
     private func handleMarkdownAutoCompletion(range: NSRange, replacementText text: String) -> Bool {
-        print("DEBUG: handleMarkdownAutoCompletion called with text: '\(text)', range: \(range)")
         
         // Handle deletion
         if text.isEmpty && range.length == 1 {
-            print("DEBUG: Handling deletion")
             return handleMarkdownDeletion(at: range)
         }
         
         // Handle insertion
         if text == "*" {
-            print("DEBUG: Handling asterisk insertion")
             return handleAsteriskInsertion(at: range)
         }
         
         if text == "#" {
-            print("DEBUG: Handling hash insertion")
             return handleHashInsertion(at: range)
         }
         
-        print("DEBUG: No special handling for this character")
         return false
     }
     
@@ -218,7 +203,6 @@ extension MarkdownTextView: UITextViewDelegate {
         // Check if we're typing a second asterisk (for bold)
         if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 42 { // ASCII for *
             // We're typing the second *, DON'T insert it, just add closing **
-            print("DEBUG: Detected second asterisk for bold completion")
             
             // Add closing ** at current position (don't insert the current *)
             let closingRange = NSRange(location: insertionPoint, length: 0)
@@ -227,7 +211,6 @@ extension MarkdownTextView: UITextViewDelegate {
             // Position cursor between the ** pairs
             let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
-            print("DEBUG: Bold completion finished, cursor at: \(newPosition)")
             return true
         }
         

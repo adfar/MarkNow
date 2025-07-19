@@ -166,9 +166,6 @@ public class MarkdownTextStorage: NSTextStorage {
     }
     
     public func updateCursorPosition(_ position: Int) {
-        #if DEBUG
-        print("DEBUG: updateCursorPosition called with \(position), current: \(currentCursorPosition)")
-        #endif
         
         // Bounds check the position
         let safePosition = max(0, min(position, length))
@@ -207,12 +204,6 @@ public class MarkdownTextStorage: NSTextStorage {
         // Check if cursor is within the token's range (the markdown block)
         let isInTokenRange = NSLocationInRange(safeCursorPosition, token.range)
         
-        // Debug logging
-        #if DEBUG
-        print("DEBUG: Cursor at \(currentCursorPosition), safe: \(safeCursorPosition)")
-        print("DEBUG: Token range: \(token.range)")
-        print("DEBUG: Cursor in token block: \(isInTokenRange)")
-        #endif
         
         return isInTokenRange
     }
