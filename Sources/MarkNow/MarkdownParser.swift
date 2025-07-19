@@ -10,10 +10,12 @@ public struct MarkdownToken {
         case bold
         case italic
         case header(level: Int)
+        case list
         case plain
         case incompleteBold
         case incompleteItalic
         case incompleteHeader(level: Int)
+        case incompleteList
     }
 }
 
@@ -21,14 +23,18 @@ public class MarkdownParser {
     private let boldPattern = #"\*\*(.*?)\*\*"#
     private let italicPattern = #"\*(.*?)\*"#
     private let headerPattern = #"^(#{1,6})\s+(.+)"#
+    private let listPattern = #"^([-\*\+])\s+(.+)"#
     private let incompleteHeaderPattern = #"^(#{1,6})\s*$"#
+    private let incompleteListPattern = #"^([-\*\+])\s*$"#
     private let incompleteBoldPattern = #"\*\*(?!\*)"#
     private let incompleteItalicPattern = #"(?<!\*)\*(?!\*)"#
     
     private lazy var boldRegex = try! NSRegularExpression(pattern: boldPattern, options: [])
     private lazy var italicRegex = try! NSRegularExpression(pattern: italicPattern, options: [])
     private lazy var headerRegex = try! NSRegularExpression(pattern: headerPattern, options: [.anchorsMatchLines])
+    private lazy var listRegex = try! NSRegularExpression(pattern: listPattern, options: [.anchorsMatchLines])
     private lazy var incompleteHeaderRegex = try! NSRegularExpression(pattern: incompleteHeaderPattern, options: [.anchorsMatchLines])
+    private lazy var incompleteListRegex = try! NSRegularExpression(pattern: incompleteListPattern, options: [.anchorsMatchLines])
     private lazy var incompleteBoldRegex = try! NSRegularExpression(pattern: incompleteBoldPattern, options: [])
     private lazy var incompleteItalicRegex = try! NSRegularExpression(pattern: incompleteItalicPattern, options: [])
     
@@ -55,7 +61,25 @@ public class MarkdownParser {
             ))
         }
         
-        // Find complete bold text (excluding areas already covered by headers)
+        // Find lists (they take precedence after headers)
+        let listMatches = listRegex.matches(in: text, options: [], range: searchRange)
+        for match in listMatches {
+            if !isRangeOverlapping(match.range, with: tokens) {
+                let markerRange = match.range(at: 1)
+                let contentRange = match.range(at: 2)
+                let marker = nsText.substring(with: markerRange)
+                let content = nsText.substring(with: contentRange)
+                
+                tokens.append(MarkdownToken(
+                    type: .list,
+                    range: match.range,
+                    content: content,
+                    isComplete: true
+                ))
+            }
+        }
+        
+        // Find complete bold text (excluding areas already covered by headers and lists)
         let boldMatches = boldRegex.matches(in: text, options: [], range: searchRange)
         for match in boldMatches {
             if !isRangeOverlapping(match.range, with: tokens) {
@@ -124,6 +148,22 @@ public class MarkdownParser {
                     type: .incompleteHeader(level: hashCount),
                     range: match.range,
                     content: nsText.substring(with: hashRange),
+                    isComplete: false
+                ))
+            }
+        }
+        
+        // Find incomplete lists (excluding areas already covered)
+        let incompleteListMatches = incompleteListRegex.matches(in: text, options: [], range: searchRange)
+        for match in incompleteListMatches {
+            if !isRangeOverlapping(match.range, with: tokens) {
+                let markerRange = match.range(at: 1)
+                let marker = nsText.substring(with: markerRange)
+                
+                tokens.append(MarkdownToken(
+                    type: .incompleteList,
+                    range: match.range,
+                    content: marker,
                     isComplete: false
                 ))
             }

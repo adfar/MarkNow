@@ -67,12 +67,16 @@ public class MarkdownTextStorage: NSTextStorage {
             applyItalicFormatting(for: token)
         case .header(let level):
             applyHeaderFormatting(for: token, level: level)
+        case .list:
+            applyListFormatting(for: token)
         case .incompleteBold:
             applyIncompleteBoldFormatting(for: token)
         case .incompleteItalic:
             applyIncompleteItalicFormatting(for: token)
         case .incompleteHeader(let level):
             applyIncompleteHeaderFormatting(for: token, level: level)
+        case .incompleteList:
+            applyIncompleteListFormatting(for: token)
         case .plain:
             break
         }
@@ -157,6 +161,33 @@ public class MarkdownTextStorage: NSTextStorage {
         addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
     }
     
+    private func applyListFormatting(for token: MarkdownToken) {
+        let range = token.range
+        
+        if token.isComplete {
+            // Find the content after the marker (- item, * item, + item)
+            let markerRange = NSRange(location: range.location, length: 2) // marker + space
+            let contentRange = NSRange(location: range.location + 2, length: range.length - 2)
+            
+            // Apply formatting to the content
+            addAttribute(.font, value: defaultFont, range: contentRange)
+            addAttribute(.foregroundColor, value: defaultTextColor, range: contentRange)
+            
+            // Only hide marker if cursor is NOT in this block
+            if !isTokenInCurrentBlock(token) {
+                // Hide the marker (-, *, + and space)
+                hideTextRange(markerRange)
+            }
+        }
+    }
+    
+    private func applyIncompleteListFormatting(for token: MarkdownToken) {
+        let range = token.range
+        
+        // Show incomplete syntax dimmed
+        addAttribute(.foregroundColor, value: UIColor.secondaryLabel, range: range)
+    }
+    
     public func setDefaultFont(_ font: UIFont) {
         defaultFont = font
     }
@@ -229,5 +260,13 @@ public class MarkdownTextStorage: NSTextStorage {
         // This preserves text but minimizes visual impact
         addAttribute(.foregroundColor, value: UIColor.clear, range: range)
         addAttribute(.font, value: UIFont.systemFont(ofSize: 0.01), range: range)
+    }
+    
+    private func replaceTextRangeVisually(_ range: NSRange, with replacement: String) {
+        // Hide the original text
+        hideTextRange(range)
+        
+        // For now, we'll just use paragraph styling to create bullet effect
+        // Future enhancement: could use NSTextAttachment for actual bullet replacement
     }
 }

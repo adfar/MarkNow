@@ -194,6 +194,10 @@ extension MarkdownTextView: UITextViewDelegate {
             return handleHashInsertion(at: range)
         }
         
+        if text == "\n" {
+            return handleReturnInsertion(at: range)
+        }
+        
         return false
     }
     
@@ -268,6 +272,46 @@ extension MarkdownTextView: UITextViewDelegate {
         return false
     }
     
+    private func handleReturnInsertion(at range: NSRange) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        let insertionPoint = range.location
+        
+        // Find the current line to check if we're in a list
+        let lineRange = currentText.lineRange(for: NSRange(location: insertionPoint, length: 0))
+        let lineText = currentText.substring(with: lineRange)
+        
+        // Check if current line is a list item
+        if let listMatch = lineText.range(of: #"^([-\*\+])\s+(.*)$"#, options: .regularExpression) {
+            let nsRange = NSRange(listMatch, in: lineText)
+            let markerRange = lineText.range(of: #"^[-\*\+]"#, options: .regularExpression)!
+            let marker = String(lineText[markerRange])
+            let contentRange = lineText.range(of: #"(?<=^[-\*\+]\s).*$"#, options: .regularExpression)
+            let content = contentRange != nil ? String(lineText[contentRange!]) : ""
+            
+            // If content is empty, this is a double-return to break out of list
+            if content.trimmingCharacters(in: .whitespaces).isEmpty {
+                // Remove the empty list item and break out
+                let emptyListRange = NSRange(location: lineRange.location, length: lineRange.length - 1) // -1 to keep the newline
+                markdownTextStorage.replaceCharacters(in: emptyListRange, with: "")
+                
+                // Position cursor at the now-empty line
+                textView.selectedRange = NSRange(location: lineRange.location, length: 0)
+                return true
+            } else {
+                // Continue the list with a new item
+                let newListItem = "\n\(marker) "
+                markdownTextStorage.replaceCharacters(in: range, with: newListItem)
+                
+                // Position cursor after the new marker
+                let newPosition = insertionPoint + newListItem.count
+                textView.selectedRange = NSRange(location: newPosition, length: 0)
+                return true
+            }
+        }
+        
+        return false
+    }
+    
     private func handleMarkdownDeletion(at range: NSRange) -> Bool {
         let currentText = markdownTextStorage.string as NSString
         let deletionPoint = range.location
@@ -284,6 +328,11 @@ extension MarkdownTextView: UITextViewDelegate {
         // Handle hash deletion  
         if charToDelete == 35 { // ASCII for #
             return handleHashDeletion(at: deletionPoint)
+        }
+        
+        // Handle list marker deletion (-, +) - asterisk is handled above for bold
+        if charToDelete == 45 || charToDelete == 43 { // ASCII for -, +
+            return handleListMarkerDeletion(at: deletionPoint)
         }
         
         return false
@@ -338,6 +387,26 @@ extension MarkdownTextView: UITextViewDelegate {
             markdownTextStorage.replaceCharacters(in: rangeToDelete, with: "")
             
             // Position cursor where the # was
+            textView.selectedRange = NSRange(location: position, length: 0)
+            return true
+        }
+        
+        return false
+    }
+    
+    private func handleListMarkerDeletion(at position: Int) -> Bool {
+        let currentText = markdownTextStorage.string as NSString
+        
+        // Check if this is a list marker pattern (-, + at start of line followed by space)
+        let isStartOfLine = position == 0 || currentText.character(at: position - 1) == 10
+        let hasSpaceAfter = position < currentText.length - 1 && currentText.character(at: position + 1) == 32
+        
+        if isStartOfLine && hasSpaceAfter {
+            // Delete marker and the space after it
+            let rangeToDelete = NSRange(location: position, length: 2)
+            markdownTextStorage.replaceCharacters(in: rangeToDelete, with: "")
+            
+            // Position cursor where the marker was
             textView.selectedRange = NSRange(location: position, length: 0)
             return true
         }
