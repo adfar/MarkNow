@@ -8,6 +8,8 @@ A Swift Package for creating a custom UITextView that renders Markdown formattin
 - **TextKit-based architecture** - Uses NSTextStorage subclass for efficient text handling
 - **Performance optimized** - Only parses affected paragraphs on each keystroke
 - **Clean API** - Similar to UITextView with delegate pattern
+- **Smart auto-completion** - Auto-completes markdown symbols and continues lists
+- **Block-based symbol hiding** - Markdown symbols disappear when cursor exits blocks
 - **Extensible** - Easy to add more markdown features
 
 ## Supported Markdown
@@ -15,6 +17,7 @@ A Swift Package for creating a custom UITextView that renders Markdown formattin
 - **Bold text** using `**text**`
 - *Italic text* using `*text*`
 - Headers using `# H1`, `## H2`, etc.
+- Unordered lists using `- item`, `* item`, or `+ item`
 
 ## Installation
 
@@ -24,7 +27,7 @@ Add this to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/MarkNow", from: "1.0.0")
+    .package(url: "https://github.com/adfar/MarkNow", from: "1.2.0")
 ]
 ```
 
@@ -48,7 +51,14 @@ class ViewController: UIViewController {
         
         // Setup the text view
         markdownTextView.delegate = self
-        markdownTextView.text = "# Hello **World**!"
+        markdownTextView.text = """
+        # Hello **World**!
+        
+        This is a *sample* with:
+        - First list item
+        - Second list item
+        - Third item
+        """
         
         // Add to view hierarchy
         view.addSubview(markdownTextView)
@@ -141,11 +151,30 @@ swift test # May need iOS simulator for UIKit tests
 
 MIT License - see LICENSE file for details.
 
+## Interactive Features
+
+### List Behavior
+- **Auto-continuation**: Press Return at the end of a list item to create a new item
+- **Break out**: Press Return twice (on empty list item) to exit the list
+- **Smart deletion**: Backspace on list markers removes marker and space
+
+### Auto-completion
+- **Bold**: Type `**` to auto-complete bold formatting
+- **Headers**: Type `#` for header completion
+- **Lists**: Return key automatically continues lists
+
+### Symbol Hiding
+- Markdown symbols (**, *, #, -, +) hide when cursor moves outside the block
+- Symbols reappear when editing the specific block
+
 ## Roadmap
 
-- [ ] More markdown features (links, images, lists)
+- [x] Unordered lists with auto-continuation
+- [ ] Ordered lists (1. item, 2. item)
+- [ ] More markdown features (links, images)
 - [ ] Syntax highlighting for code blocks
 - [ ] Table support
+- [ ] Visual bullet points for lists
 - [ ] Plugin architecture for custom formatting
 - [ ] Performance improvements for very large documents
 - [ ] Accessibility enhancements
