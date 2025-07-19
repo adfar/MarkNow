@@ -148,6 +148,11 @@ public class MarkdownTextView: UIView {
     public override var isFirstResponder: Bool {
         return textView.isFirstResponder
     }
+    
+    // Debug method to verify version
+    public func getVersionInfo() -> String {
+        return "MarkNow v1.1.0 - LineFragmentPadding: \(textContainer.lineFragmentPadding), TextContainerInset: \(textView.textContainerInset)"
+    }
 }
 
 // MARK: - UITextViewDelegate
@@ -202,6 +207,7 @@ extension MarkdownTextView: UITextViewDelegate {
         // Check if we're typing a second asterisk (for bold)
         if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 42 { // ASCII for *
             // We're typing the second *, just add closing ** (don't add another *)
+            print("DEBUG: Detected second asterisk for bold completion")
             markdownTextStorage.replaceCharacters(in: range, with: "*")
             
             // Add closing ** after current position
@@ -211,6 +217,7 @@ extension MarkdownTextView: UITextViewDelegate {
             // Position cursor between the ** pairs (after the first **)
             let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
+            print("DEBUG: Bold completion finished, cursor at: \(newPosition)")
             return true
         }
         
