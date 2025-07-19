@@ -15,10 +15,9 @@ public class MarkdownTextView: UIView {
         get { markdownTextStorage.string }
         set { 
             markdownTextStorage.replaceCharacters(in: NSRange(location: 0, length: markdownTextStorage.length), with: newValue)
-            // When setting text programmatically, position cursor at end to avoid showing symbols
-            let endPosition = markdownTextStorage.length
-            textView.selectedRange = NSRange(location: endPosition, length: 0)
-            markdownTextStorage.updateCursorPosition(endPosition)
+            // When setting text programmatically, position cursor at beginning
+            textView.selectedRange = NSRange(location: 0, length: 0)
+            markdownTextStorage.updateCursorPosition(0)
         }
     }
     
