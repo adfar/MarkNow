@@ -90,7 +90,7 @@ public class MarkdownTextView: UIView {
     private func setupTextKit() {
         // TextKit stack is already connected in init
         // Configure text container
-        textContainer.lineFragmentPadding = 0
+        textContainer.lineFragmentPadding = 5 // Standard UITextView padding
         textContainer.widthTracksTextView = true
         textContainer.heightTracksTextView = false
     }
@@ -111,6 +111,9 @@ public class MarkdownTextView: UIView {
         textView.delegate = self
         textView.font = UIFont.systemFont(ofSize: 16)
         textView.textColor = .label
+        
+        // Add proper text container insets for better cursor positioning
+        textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         
         // Set default styling
         markdownTextStorage.setDefaultFont(textView.font ?? UIFont.systemFont(ofSize: 16))
@@ -198,15 +201,14 @@ extension MarkdownTextView: UITextViewDelegate {
         
         // Check if we're typing a second asterisk (for bold)
         if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 42 { // ASCII for *
-            // Insert closing ** and position cursor between them
-            let boldText = "*"
-            markdownTextStorage.replaceCharacters(in: range, with: boldText)
+            // We're typing the second *, just add closing ** (don't add another *)
+            markdownTextStorage.replaceCharacters(in: range, with: "*")
             
-            // Add closing ** 
+            // Add closing ** after current position
             let closingRange = NSRange(location: insertionPoint + 1, length: 0)
             markdownTextStorage.replaceCharacters(in: closingRange, with: "**")
             
-            // Position cursor between the ** pairs
+            // Position cursor between the ** pairs (after the first **)
             let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             return true
