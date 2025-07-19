@@ -20,8 +20,8 @@ public struct MarkdownToken {
 public class MarkdownParser {
     private let boldPattern = #"\*\*(.*?)\*\*"#
     private let italicPattern = #"\*(.*?)\*"#
-    private let headerPattern = #"^(#{1,6})\s+(.*)"#
-    private let incompleteHeaderPattern = #"^(#{1,6})\s*$"#
+    private let headerPattern = #"^(#{1,6})\s+(.+)"#
+    private let incompleteHeaderPattern = #"^(#{1,6})(\s*)$"#
     private let incompleteBoldPattern = #"\*\*(?!\*)"#
     private let incompleteItalicPattern = #"(?<!\*)\*(?!\*)"#
     
