@@ -201,10 +201,10 @@ public class MarkdownTextStorage: NSTextStorage {
         guard length > 0 else { return false }
         let safeCursorPosition = max(0, min(currentCursorPosition, length))
         
-        // Check if cursor is within the token's range, but NOT at the very start
-        // Being positioned before a block shouldn't count as being "in" the block
-        let isInTokenRange = safeCursorPosition >= token.range.location && 
-                           safeCursorPosition < token.range.location + token.range.length
+        // Check if cursor is within the token's range, but exclude the very start position
+        // Being positioned at the start of a block shouldn't count as being "in" the block
+        let isInTokenRange = NSLocationInRange(safeCursorPosition, token.range) && 
+                           safeCursorPosition > token.range.location
         
         return isInTokenRange
     }
