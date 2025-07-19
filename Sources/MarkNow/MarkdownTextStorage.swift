@@ -175,7 +175,8 @@ public class MarkdownTextStorage: NSTextStorage {
             
             // Only hide marker if cursor is NOT in this block
             if !isTokenInCurrentBlock(token) {
-                // Hide the marker (-, *, + and space)
+                // Hide the marker and space for now
+                // TODO: Replace with actual bullet point rendering
                 hideTextRange(markerRange)
             }
         }
