@@ -281,14 +281,28 @@ extension MarkdownTextView: UITextViewDelegate {
         let lineRange = currentText.lineRange(for: NSRange(location: insertionPoint, length: 0))
         let lineText = currentText.substring(with: lineRange)
         
-        // Check if current line is a list item
+        var marker: String?
+        var content: String = ""
+        
+        // Check if current line is a list item - either original marker or bullet
         if let listMatch = lineText.range(of: #"^([-\*\+])\s+(.*)$"#, options: .regularExpression) {
-            let nsRange = NSRange(listMatch, in: lineText)
+            // Found original marker
             let markerRange = lineText.range(of: #"^[-\*\+]"#, options: .regularExpression)!
-            let marker = String(lineText[markerRange])
+            marker = String(lineText[markerRange])
             let contentRange = lineText.range(of: #"(?<=^[-\*\+]\s).*$"#, options: .regularExpression)
-            let content = contentRange != nil ? String(lineText[contentRange!]) : ""
-            
+            content = contentRange != nil ? String(lineText[contentRange!]) : ""
+        } else if let bulletMatch = lineText.range(of: #"^(•)\s+(.*)$"#, options: .regularExpression) {
+            // Found bullet - get original marker from original text
+            let lineStartPosition = lineRange.location
+            if let originalMarker = markdownTextStorage.getOriginalMarkerAt(lineStartPosition) {
+                marker = originalMarker
+                let contentRange = lineText.range(of: #"(?<=^•\s).*$"#, options: .regularExpression)
+                content = contentRange != nil ? String(lineText[contentRange!]) : ""
+            }
+        }
+        
+        // If we found a list marker, handle list continuation
+        if let listMarker = marker {
             // If content is empty, this is a double-return to break out of list
             if content.trimmingCharacters(in: .whitespaces).isEmpty {
                 // Remove the empty list item and break out
@@ -297,15 +311,21 @@ extension MarkdownTextView: UITextViewDelegate {
                 
                 // Position cursor at the now-empty line
                 textView.selectedRange = NSRange(location: lineRange.location, length: 0)
+                
+                // Update cursor position to ensure proper formatting
+                markdownTextStorage.updateCursorPosition(lineRange.location)
                 return true
             } else {
-                // Continue the list with a new item
-                let newListItem = "\n\(marker) "
+                // Continue the list with a new item using original marker
+                let newListItem = "\n\(listMarker) "
                 markdownTextStorage.replaceCharacters(in: range, with: newListItem)
                 
                 // Position cursor after the new marker
                 let newPosition = insertionPoint + newListItem.count
                 textView.selectedRange = NSRange(location: newPosition, length: 0)
+                
+                // Update cursor position to ensure proper formatting restoration
+                markdownTextStorage.updateCursorPosition(newPosition)
                 return true
             }
         }

@@ -229,6 +229,21 @@ public class MarkdownTextStorage: NSTextStorage {
         activeReplacements.removeAll()
     }
     
+    public func getOriginalMarkerAt(_ position: Int) -> String? {
+        // Check if the position is within bounds of original text
+        guard position < originalText.count else { return nil }
+        
+        // Get the character at this position in original text
+        let originalChar = (originalText as NSString).substring(with: NSRange(location: position, length: 1))
+        
+        // Return if it's a valid list marker
+        if originalChar == "-" || originalChar == "*" || originalChar == "+" {
+            return originalChar
+        }
+        
+        return nil
+    }
+    
     public func updateCursorPosition(_ position: Int) {
         
         // Bounds check the position
