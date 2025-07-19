@@ -298,15 +298,21 @@ extension MarkdownTextView: UITextViewDelegate {
             return true
         }
         
+        // Check if cursor is positioned right before a closing backtick (skip over it)
+        if insertionPoint < currentText.length && currentText.character(at: insertionPoint) == 96 {
+            // Just move cursor forward past the existing backtick
+            let newPosition = insertionPoint + 1
+            textView.selectedRange = NSRange(location: newPosition, length: 0)
+            return true
+        }
+        
         // Check if we're typing a second backtick (for inline code completion)
         if insertionPoint > 0 && currentText.character(at: insertionPoint - 1) == 96 { // ASCII for `
             // We're typing the second `, DON'T insert it, just add closing `
-            
-            // Add closing ` at current position (don't insert the current `)
             let closingRange = NSRange(location: insertionPoint, length: 0)
             markdownTextStorage.replaceCharacters(in: closingRange, with: "`")
             
-            // Position cursor between the ` pairs
+            // Position cursor between the ` pairs  
             let newPosition = insertionPoint + 1
             textView.selectedRange = NSRange(location: newPosition, length: 0)
             return true
